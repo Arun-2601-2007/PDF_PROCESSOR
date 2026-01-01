@@ -1,0 +1,239 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Merger</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    body {
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 2px dashed #bbb;
+      border-radius: 8px;
+      width: 100%;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    input[type="file"]:hover {
+      border-color: #007bff;
+    }
+
+    #fileList {
+      list-style: none;
+      margin-top: 15px;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    #fileList li {
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #fileList li button {
+      background: #ff4d4f;
+      border: none;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.3s;
+    }
+
+    #fileList li button:hover {
+      background: #d9363e;
+    }
+
+    button.upload-btn {
+      margin-top: 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    button.upload-btn:hover {
+      background: #0056b3;
+      transform: translateY(-2px);
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    @media(max-width: 550px) {
+      .container {
+        padding: 20px;
+      }
+
+      button.upload-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>PDF Merger</h2>
+
+    <input type="file" id="files" multiple accept=".pdf" />
+    <ul id="fileList"></ul>
+
+    <button class="upload-btn" onclick="upload()">Merge PDFs</button>
+
+    <p id="status"></p>
+  </div>
+
+  
+  <script>
+
+
+    let selectedFiles = [];
+
+    const fileInput = document.getElementById("files");
+    const fileList = document.getElementById("fileList");
+    const status = document.getElementById("status");
+
+    const input = document.getElementById("files");
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+
+      if (!file) return;
+
+      if (file.size > MAX_SIZE) {
+        alert("File size must be less than 5MB");
+        input.value = ""; // clear selection
+      }
+    });
+    
+    // Handle file selection
+    fileInput.addEventListener("change", (event) => {
+      for (let file of event.target.files) {
+        if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+          selectedFiles.push(file);
+        }
+      }
+      renderFileList();
+      fileInput.value = "";
+    });
+
+    // Render selected files
+    function renderFileList() {
+      fileList.innerHTML = "";
+      selectedFiles.forEach((file, idx) => {
+        const li = document.createElement("li");
+        li.textContent = file.name + " (" + Math.round(file.size / 1024) + " KB)";
+
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove";
+        removeBtn.onclick = () => {
+          selectedFiles.splice(idx, 1);
+          renderFileList();
+        };
+
+        li.appendChild(removeBtn);
+        fileList.appendChild(li);
+      });
+    }
+
+    // Upload files
+    async function upload() {
+      if (selectedFiles.length === 0) {
+        alert("Please select at least one PDF.");
+        return;
+      }
+
+      const formData = new FormData();
+      selectedFiles.forEach(file => formData.append("files", file));
+
+      status.innerText = "Uploading...";
+      try {
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        status.innerText = "Processing...";
+        pollStatus(data.job_id);
+      } catch (err) {
+        console.log(err);
+        status.innerText = "Upload failed.";
+      }
+    }
+
+    // Poll job status
+    async function pollStatus(jobId) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/jobs/${jobId}`);
+          const data = await res.json();
+
+          if (data.status === "COMPLETED") {
+            clearInterval(interval);
+            status.innerText = "Download started!";
+            window.location.href = data.result_url;
+          } else if (data.status === "FAILED") {
+            clearInterval(interval);
+            status.innerText = "Processing failed.";
+          } else {
+            status.innerText = "Processing...";
+          }
+        } catch (err) {
+          clearInterval(interval);
+          console.error(err);
+          status.innerText = "Error checking job status.";
+        }
+      }, 2000);
+    }
+  </script>
+</body>
+
+</html>
