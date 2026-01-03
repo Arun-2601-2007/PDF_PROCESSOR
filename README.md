@@ -36,6 +36,52 @@ BONUS FEATURES COMPLETED
   
   • Automatic download of merged PDF after processing
 
+THOUGHT PROCESS AND DESIGN APPROACH
+
+The primary goal was to design a minimal yet robust PDF processing service that can handle computationally expensive tasks without blocking client requests.
+
+1. Job-Based Architecture
+
+Since PDF operations such as merging are time-consuming, the system was designed around a job-based model. Instead of processing files synchronously, each request creates a job with a unique job ID. This allows the server to respond immediately while the actual processing happens in the background.
+
+2. Asynchronous Processing
+
+To prevent server crashes and improve responsiveness, PDF processing is executed asynchronously. This ensures that the main API thread remains free to handle incoming requests, even when multiple jobs are being processed.
+
+3. Clear Job State Management
+
+
+Each job progresses through well-defined states: PENDING, PROCESSING, COMPLETED, and FAILED. These states make it easy for clients to track progress and handle errors gracefully.
+
+4. Dual Input Support (Frontend and API)
+
+Two job creation methods were intentionally supported:
+• File uploads via a frontend interface
+• Public file URLs via an API endpoint
+
+5. Polling-Based Status Tracking
+
+Instead of complex real-time communication, a polling mechanism was chosen. The frontend periodically checks job status, which keeps the system simple and reliable while still providing timely updates.
+
+6. Resource Safety Considerations
+
+To avoid excessive memory or CPU usage:
+• File size limits were enforced
+• The number of files per job was restricted
+• Processing was performed sequentially per job
+
+
+7. User Experience Focus
+
+A simple frontend was added to improve usability. Automatic file download after successful processing removes the need for manual steps, making the experience smooth and intuitive.
+
+8. Separation of Concerns
+
+The system is divided into clear responsibilities:
+• The API layer handles request validation and job creation
+• The processing layer performs PDF merging
+• The database stores job metadata
+• The frontend manages user interaction and polling
 
 TECH STACK
 
