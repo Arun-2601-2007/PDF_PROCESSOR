@@ -56,7 +56,9 @@ Each job progresses through well-defined states: PENDING, PROCESSING, COMPLETED,
 4. Dual Input Support (Frontend and API)
 
 Two job creation methods were intentionally supported:
+
 • File uploads via a frontend interface
+
 • Public file URLs via an API endpoint
 
 5. Polling-Based Status Tracking
@@ -66,8 +68,11 @@ Instead of complex real-time communication, a polling mechanism was chosen. The 
 6. Resource Safety Considerations
 
 To avoid excessive memory or CPU usage:
+
 • File size limits were enforced
+
 • The number of files per job was restricted
+
 • Processing was performed sequentially per job
 
 
@@ -78,9 +83,13 @@ A simple frontend was added to improve usability. Automatic file download after 
 8. Separation of Concerns
 
 The system is divided into clear responsibilities:
+
 • The API layer handles request validation and job creation
+
 • The processing layer performs PDF merging
+
 • The database stores job metadata
+
 • The frontend manages user interaction and polling
 
 TECH STACK
